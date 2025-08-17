@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Ular Tangga</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+            border: 2px solid #333;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .player-token {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5em;
+            transition: all 0.5s ease-in-out;
+            z-index: 10;
+        }
+        #player1 {
+            background-color: #ff5722;
+        }
+        #player2 {
+            background-color: #4caf50;
+        }
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #dice-btn {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        #message {
+            margin-top: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        #dice-result {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2196f3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Game Ular Tangga</h1>
+
+    <div id="game-container"></div>
+
+    <div id="controls">
+        <div id="message">Giliran: Pemain 1</div>
+        <button id="dice-btn">Lempar Dadu</button>
+        <div>Hasil Dadu: <span id="dice-result"></span></div>
+    </div>
+
+    <script>
+        const boardSize = 100;
+        const board = [];
+        const gameContainer = document.getElementById('game-container');
+        const diceBtn = document.getElementById('dice-btn');
+        const messageEl = document.getElementById('message');
+        const diceResultEl = document.getElementById('dice-result');
+
+        let currentPlayer = 1;
+        let playerPositions = { 1: 0, 2: 0 };
+
+        // Ular dan Tangga (mulai dari 1-100)
+        const snakesAndLadders = {
+            // Tangga
+            4: 14, 9: 31, 20: 38, 28: 84, 40: 59, 51: 67, 63: 81, 71: 91,
+            // Ular
+            17: 7, 54: 34, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 79
+        };
+
+        function createBoard() {
+            let cellNumber = 100;
+            let rowDirection = -1; // -1 untuk kiri ke kanan, 1 untuk kanan ke kiri
+            let cellIndex = 0;
+
+            for (let i = 0; i < 10; i++) {
+                if (rowDirection === -1) {
+                    for (let j = 0; j < 10; j++) {
+                        board[cellIndex++] = cellNumber--;
+                    }
+                } else {
+                    for (let j = 0; j < 10; j++) {
+                        board[cellIndex++] = cellNumber--;
+                    }
+                }
+                rowDirection *= -1;
+            }
+
+            // Ganti arah baris kedua dan seterusnya
+            cellIndex = 0;
+            let startRow = 100;
+            for (let i = 0; i < 10; i++) {
+                if (i % 2 === 0) {
+                    for (let j = 0; j < 10; j++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.textContent = startRow--;
+                        gameContainer.appendChild(cell);
+                    }
+                } else {
+                    startRow -= 9;
+                    for (let j = 0; j < 10; j++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.textContent = startRow++;
+                        gameContainer.appendChild(cell);
+                    }
+                    startRow += 9;
+                }
+            }
+
+            // Tambahkan token pemain
+            const player1Token = document.createElement('div');
+            player1Token.classList.add('player-token');
+            player1Token.id = 'player1';
+            player1Token.textContent = 'P1';
+            gameContainer.appendChild(player1Token);
+
+            const player2Token = document.createElement('div');
+            player2Token.classList.add('player-token');
+            player2Token.id = 'player2';
+            player2Token.textContent = 'P2';
+            gameContainer.appendChild(player2Token);
+            
+            updatePlayerPosition(1);
+            updatePlayerPosition(2);
+        }
+
+        function rollDice() {
+            return Math.floor(Math.random() * 6) + 1;
+        }
+
+        function movePlayer(player, steps) {
+            let newPosition = playerPositions[player] + steps;
+
+            if (newPosition > boardSize) {
+                newPosition = boardSize;
+            }
+
+            playerPositions[player] = newPosition;
+
+            // Cek Ular atau Tangga
+            if (snakesAndLadders[newPosition]) {
+                const finalPosition = snakesAndLadders[newPosition];
+                setTimeout(() => {
+                    playerPositions[player] = finalPosition;
+                    updatePlayerPosition(player);
+                    const type = finalPosition > newPosition ? 'tangga' : 'ular';
+                    messageEl.textContent = `Pemain ${player} naik ${type} ke petak ${finalPosition}!`;
+                }, 1000);
+            }
+
+            updatePlayerPosition(player);
+
+            if (newPosition === boardSize) {
+                setTimeout(() => {
+                    alert(`Selamat! Pemain ${player} menang!`);
+                    resetGame();
+                }, 1000);
+            }
+        }
+
+        function updatePlayerPosition(player) {
+            const token = document.getElementById(`player${player}`);
+            const position = playerPositions[player];
+            
+            let cellIndex;
+            if (position === 0) {
+                 cellIndex = -1; // Sebelum petak 1
+            } else {
+                let cellValue;
+                if (Math.floor((position - 1) / 10) % 2 === 0) {
+                    cellValue = Math.ceil(position / 10) * 10 - (position % 10 === 0 ? 0 : position % 10);
+                } else {
+                    cellValue = Math.ceil(position / 10) * 10 - 9 + (position % 10 === 0 ? 9 : position % 10 -1);
+                }
+                cellIndex = Array.from(gameContainer.children).findIndex(el => el.textContent == position);
+            }
+            
+            if (cellIndex !== -1) {
+                 const cell = gameContainer.children[cellIndex];
+                 const cellRect = cell.getBoundingClientRect();
+                 const gameRect = gameContainer.getBoundingClientRect();
+
+                 let top = cellRect.top - gameRect.top + 5;
+                 let left = cellRect.left - gameRect.left + 5;
+                 
+                 // Sesuaikan posisi jika ada dua pemain di petak yang sama
+                 if (playerPositions[1] === playerPositions[2]) {
+                     if (player === 1) {
+                         left -= 5;
+                     } else {
+                         left += 5;
+                     }
+                 }
+
+                 token.style.top = `${top}px`;
+                 token.style.left = `${left}px`;
+            } else {
+                 token.style.top = '100%';
+                 token.style.left = '0%';
+            }
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            messageEl.textContent = `Giliran: Pemain ${currentPlayer}`;
+        }
+
+        function resetGame() {
+            playerPositions = { 1: 0, 2: 0 };
+            currentPlayer = 1;
+            messageEl.textContent = "Giliran: Pemain 1";
+            diceResultEl.textContent = "";
+            updatePlayerPosition(1);
+            updatePlayerPosition(2);
+        }
+
+        diceBtn.addEventListener('click', () => {
+            const roll = rollDice();
+            diceResultEl.textContent = roll;
+            messageEl.textContent = `Pemain ${currentPlayer} mendapat angka ${roll}.`;
+            
+            movePlayer(currentPlayer, roll);
+            
+            setTimeout(() => {
+                switchPlayer();
+            }, 1500);
+        });
+
+        // Inisialisasi
+        createBoard();
+    </script>
+
+</body>
+</html>
